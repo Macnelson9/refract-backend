@@ -1,16 +1,19 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
-  Address,
   BASE_FEE,
-  Contract,
   TransactionBuilder,
-  nativeToScVal,
   rpc,
-  scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
 import { AppConfig } from "../config/configuration";
+import {
+  decodeLockupExpiresAt,
+  encodeLockupExpiresAt,
+  encodeProvideCapital,
+  encodeWithdrawCapital,
+  poolOperation,
+} from "../stellar/contracts/refract-pool";
 import { DepositDto } from "./dto/deposit.dto";
 import { WithdrawDto } from "./dto/withdraw.dto";
 
@@ -65,14 +68,17 @@ export class PoolService {
    * provider, so unlike ClaimSettlementService's relayer-signed flow, the
    * server can never sign this itself.
    */
-  private async buildUnsignedInvoke(sourcePublicKey: string, method: string, args: xdr.ScVal[]): Promise<string> {
+  private async buildUnsignedInvoke(
+    sourcePublicKey: string,
+    method: "provide_capital" | "withdraw_capital",
+    args: xdr.ScVal[],
+  ): Promise<string> {
     if (!this.poolContractId) {
       throw new BadRequestException({ error: "Pool contract not configured (missing REFRACT_POOL_CONTRACT_ID)" });
     }
     try {
       const sourceAccount = await this.server.getAccount(sourcePublicKey);
-      const contract = new Contract(this.poolContractId);
-      const operation = contract.call(method, ...args);
+      const operation = poolOperation(this.poolContractId, method, args);
 
       const builtTx = new TransactionBuilder(sourceAccount, {
         fee: BASE_FEE,
@@ -106,12 +112,11 @@ export class PoolService {
     }
     try {
       const sourceAccount = await this.server.getAccount(provider);
-      const contract = new Contract(this.poolContractId);
       const tx = new TransactionBuilder(sourceAccount, {
         fee: BASE_FEE,
         networkPassphrase: this.networkPassphrase,
       })
-        .addOperation(contract.call("lockup_expires_at", new Address(provider).toScVal()))
+        .addOperation(poolOperation(this.poolContractId, "lockup_expires_at", encodeLockupExpiresAt(provider)))
         .setTimeout(30)
         .build();
 
@@ -119,8 +124,7 @@ export class PoolService {
       if (rpc.Api.isSimulationError(sim)) {
         throw new Error(sim.error);
       }
-      const value = scValToNative(sim.result!.retval);
-      return value === null ? null : BigInt(value as bigint);
+      return decodeLockupExpiresAt(sim.result!.retval);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new BadRequestException({ error: `Failed to read lockup status: ${message}` });
@@ -161,10 +165,11 @@ export class PoolService {
     }
     const sharesOut = (amountBn * mockPool.totalShares) / mockPool.totalUsdc;
 
-    const txXdr = await this.buildUnsignedInvoke(provider, "provide_capital", [
-      new Address(provider).toScVal(),
-      nativeToScVal(amountBn, { type: "i128" }),
-    ]);
+    const txXdr = await this.buildUnsignedInvoke(
+      provider,
+      "provide_capital",
+      encodeProvideCapital(provider, amountBn),
+    );
 
     return {
       provider,
@@ -204,10 +209,11 @@ export class PoolService {
       });
     }
 
-    const txXdr = await this.buildUnsignedInvoke(provider, "withdraw_capital", [
-      new Address(provider).toScVal(),
-      nativeToScVal(sharesBn, { type: "i128" }),
-    ]);
+    const txXdr = await this.buildUnsignedInvoke(
+      provider,
+      "withdraw_capital",
+      encodeWithdrawCapital(provider, sharesBn),
+    );
 
     return {
       provider,
@@ -222,8 +228,6 @@ export class PoolService {
     return Array.from({ length: 30 }, (_, i) => ({
       date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
       premiums: (4_000 + Math.random() * 12_000).toFixed(0),
-      payouts: Math.random() > 0.9 ? (5_000 + Math.random() * 30_000).toFixed(0) : "0",
-      apyBps: Math.floor(700 + Math.random() * 400),
-    }));
-  }
-}
+      payouts: Math.random() > 0.9 ? (5_000
+
+/* … truncated 113 chars — edit only what you need near the top … */
