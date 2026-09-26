@@ -28,6 +28,20 @@ export class PolicyController {
     };
   }
 
+  /**
+   * Structured, read-only preflight for a prospective purchase. Runs the
+   * same on-chain checks buy() performs (account funded, capacity,
+   * utilization, coverage bounds, duration, premium balance/trustline)
+   * concurrently and returns per-check results without ever building an
+   * XDR, so the frontend can surface actionable failures before the user
+   * signs. Registered ahead of the :id route so "preflight" isn't
+   * swallowed as a policy id.
+   */
+  @Post("preflight")
+  preflight(@Body() dto: BuyPolicyDto) {
+    return this.policyService.preflight(dto);
+  }
+
   @Get("holder/:address")
   findByHolder(@Param("address") address: string) {
     return { policies: this.policyService.findByHolder(address) };
