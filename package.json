@@ -9,7 +9,11 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "jest"
+    "test": "jest",
+    "soroban:up": "docker compose -f test/soroban/docker-compose.yml up -d --wait",
+    "soroban:down": "docker compose -f test/soroban/docker-compose.yml down -v",
+    "soroban:bootstrap": "ts-node scripts/soroban-bootstrap.ts",
+    "test:soroban": "jest --config test/soroban/jest.soroban.config.js"
   },
   "jest": {
     "preset": "ts-jest",
