@@ -1,7 +1,7 @@
 {
   "name": "refract-protocol-backend",
   "version": "0.1.0",
-  "description": "Refract Protocol backend — oracle monitoring, claim processing, premium quoting",
+  "description": "Refract Protocol backend \u2014 oracle monitoring, claim processing, premium quoting",
   "main": "dist/main.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/main.ts",
@@ -13,7 +13,9 @@
     "soroban:up": "docker compose -f test/soroban/docker-compose.yml up -d --wait",
     "soroban:down": "docker compose -f test/soroban/docker-compose.yml down -v",
     "soroban:bootstrap": "ts-node scripts/soroban-bootstrap.ts",
-    "test:soroban": "jest --config test/soroban/jest.soroban.config.js"
+    "test:soroban": "jest --config test/soroban/jest.soroban.config.js",
+    "regenerate:xdr-fixtures": "ts-node scripts/regenerate-xdr-fixtures.ts",
+    "test:integration": "jest --config test/integration/jest.integration.config.ts --runInBand"
   },
   "jest": {
     "preset": "ts-jest",
